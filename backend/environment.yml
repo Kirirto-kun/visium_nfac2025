@@ -1,0 +1,14 @@
+name: clip-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy=2.2.5
+  - pillow=11.2.1
+  - pip
+  - pip:
+      - torch==2.7.0
+      - transformers==4.51.3
+      - safetensors==0.5.3
+      - huggingface-hub==0.30.2
