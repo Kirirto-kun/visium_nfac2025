@@ -1,37 +1,29 @@
-import torch
-from transformers import CLIPProcessor, CLIPModel
-from PIL import Image
 import io
 import base64
+from PIL import Image
+import torch
+from transformers import CLIPProcessor, CLIPModel
 
-
-model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+model = None
+processor = None
 
 def init():
-    global clip_model, clip_processor
-    clip_model = model
-    clip_processor = processor
+    global model, processor
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 def run(raw_data):
     try:
-        # raw_data ожидается в формате JSON с base64 изображением и текстом
-        # {
-        #     "image": "<base64>",
-        #     "text": "кошка"
-        # }
-        image_data = base64.b64decode(raw_data["image"])
-        image = Image.open(io.BytesIO(image_data)).convert("RGB")
-        text = raw_data["text"]
+        image_b64 = raw_data["image"][0]
+        image_bytes = base64.b64decode(image_b64)
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-        inputs = clip_processor(text=[text], images=image, return_tensors="pt", padding=True)
-        outputs = clip_model(**inputs)
-        logits_per_image = outputs.logits_per_image
-        probs = logits_per_image.softmax(dim=1)
+        inputs = processor(images=image, return_tensors="pt")
+        with torch.no_grad():
+            image_features = model.get_image_features(**inputs)
 
-        return {
-            "similarity_score": probs[0][0].item()
-        }
+        embedding = image_features[0].cpu().numpy().tolist()
+        return {"embedding": embedding}
 
     except Exception as e:
         return {"error": str(e)}
