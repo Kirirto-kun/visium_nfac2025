@@ -9,4 +9,4 @@ class Image(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     image_url = Column(Text, nullable=False)
-    embedding = Column(Vector(384), nullable=False)  # pgvector type
+    embedding = Column(Vector(), nullable=False)  # pgvector type

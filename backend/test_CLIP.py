@@ -3,14 +3,18 @@ import base64
 import os
 from PIL import Image
 from io import BytesIO
+from dotenv import load_dotenv
 
 # Подавляем предупреждения
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
-# Конфигурация Azure ML
-API_KEY = "81jyK1RyKPbWaX7A9SVSxNGTaXHbGfBsP40mRzsCZSKdKXJ2ut49JQQJ99BEAAAAAAAAAAAAINFRAZML29Ik"
-ENDPOINT_URL = "https://candydata-aurue.eastus.inference.ml.azure.com/score"
-DEPLOYMENT_NAME = "facebook-dinov2-image-embeddi-3"
+# Load environment variables from .env file
+load_dotenv()
+
+# Azure ML Configuration
+API_KEY = os.getenv("IMAGE_EMBADING_API")
+ENDPOINT_URL = os.getenv("AZURE_ENDPOINT_URL_IMAGE")
+DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME_IMAGE")
 
 def prepare_image(image_url):
     """Оптимизированная загрузка изображения"""
@@ -60,7 +64,7 @@ def main():
         
         if embeddings:
             print("Успешно! Первые 5 значений:")
-            print(embeddings[:5])
+            print(embeddings[:10])
         else:
             print("Не удалось получить эмбеддинги")
             
