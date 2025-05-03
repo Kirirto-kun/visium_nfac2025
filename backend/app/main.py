@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from .models import Base, Image
@@ -9,6 +8,9 @@ from dotenv import load_dotenv
 from sqlalchemy.sql import text
 from embeddings_image import ClipImageEmbedder
 from embeddings_text import ClipTextEmbedder
+from .auth import auth_router
+from .db import SessionLocal, engine
+
 app = FastAPI()
 
 image_embedder = ClipImageEmbedder()
@@ -24,9 +26,9 @@ if DATABASE_URL:
 else:
     raise RuntimeError("DATABASE_URL environment variable is not set.")
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
+Base.metadata.create_all(bind=engine)
 
+# Automatically create tables
 Base.metadata.create_all(bind=engine)
 
 
@@ -35,7 +37,7 @@ class ImageCreate(BaseModel):
     embedding: list[float]
 
 @app.post("/images/")
-def add_image_with_url(image_url: str):
+async def add_image_with_url(image_url: str):
     try:
         embedding = image_embedder.get_embedding(image_url)
         if not embedding:
@@ -119,3 +121,6 @@ async def search_images(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+app.include_router(auth_router)
+
