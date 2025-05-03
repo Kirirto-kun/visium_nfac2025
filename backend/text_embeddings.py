@@ -3,6 +3,8 @@ from typing import List
 from openai import AzureOpenAI
 import logging
 from dotenv import load_dotenv
+import numpy as np
+from sklearn.decomposition import PCA
 
 load_dotenv()
 
@@ -15,6 +17,7 @@ class TextEmbedder:
             api_key=os.getenv("TEXT_EMBADING_API")
         )
         self.deployment = os.getenv("AZURE_DEPLOYMENT_NAME_TEXT")
+        self.pca = None  # Инициализация PCA трансформера
 
     def _validate_env(self):
         required_vars = [
@@ -28,11 +31,17 @@ class TextEmbedder:
 
     def get_embedding(self, text: str) -> List[float]:
         try:
+            # Запрос эмбеддинга с уменьшением размерности через API
             response = self.client.embeddings.create(
                 input=text,
-                model=self.deployment
+                model=self.deployment,
+                dimensions=768  # Прямое указание размерности
             )
-            return response.data[0].embedding
+            
+            embedding = response.data[0].embedding
+                
+            return embedding
+            
         except Exception as e:
             logging.error(f"Error details: {e}")
             raise
@@ -40,7 +49,8 @@ class TextEmbedder:
 if __name__ == "__main__":
     try:
         embedder = TextEmbedder()
-        embedding = embedder.get_embedding("тестовый текст")
-        print(f"Успешно! Пример эмбеддинга: {embedding[:5]}")
+        embedding = embedder.get_embedding("кот")
+        print(f"Успешно! Размерность: {len(embedding)}")
+        print(f"Пример эмбеддинга: {embedding[:5]}")
     except Exception as e:
-        print(f"Ошибка инициализации: {str(e)}")
+        print(f"Ошибка: {str(e)}")

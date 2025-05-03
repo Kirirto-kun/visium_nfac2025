@@ -56,7 +56,7 @@ def get_embeddings_azure(image):
         return None
 
 def main():
-    image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg"
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/1/18/Dog_Breeds.jpg"
     
     try:
         img = prepare_image(image_url)
@@ -65,6 +65,7 @@ def main():
         if embeddings:
             print("Успешно! Первые 5 значений:")
             print(embeddings[:10])
+            print(f"Размер эмбеддинга: {len(embeddings)}")
         else:
             print("Не удалось получить эмбеддинги")
             
