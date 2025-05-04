@@ -394,7 +394,7 @@ async def get_my_images(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/user-images/")
+@app.post("/user-images/")
 async def get_user_images(payload: dict = Body(...)):
     try:
         username = payload.get("username")
@@ -634,5 +634,34 @@ async def generate_image_with_dalle(payload: dict = Body(...), token: str = Depe
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating image: {e}")
+
+@app.post("/image-info/")
+async def get_image_info(payload: dict = Body(...)):
+    try:
+        image_id = payload.get("image_id")
+        if not image_id:
+            raise HTTPException(status_code=400, detail="Image ID is required")
+
+        db = SessionLocal()
+        try:
+            image = db.query(Image).filter(Image.id == image_id).first()
+            if not image:
+                raise HTTPException(status_code=404, detail="Image not found")
+
+            return {
+                "id": image.id,
+                "image_url": image.image_url,
+                "description": image.description,
+                "is_ai_generated": image.is_ai_generated,
+                "likes_count": image.likes_count,
+                "created_at": image.created_at
+            }
+        finally:
+            db.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching image information: {e}")
 
 

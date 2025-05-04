@@ -1,6 +1,6 @@
 import { toast } from "@/components/ui/use-toast"
 
-const BASE_URL = "http://127.0.0.1:8000"
+const BASE_URL = "https://visium-backend-1c09dc82b726.herokuapp.com"
 
 // Helper function to get the auth token
 const getAuthToken = (): string | null => {
@@ -66,6 +66,7 @@ export interface Image {
   is_ai_generated: boolean
   likes_count: number
   user_has_liked?: boolean
+  username?: string
 }
 
 export interface Comment {
@@ -125,3 +126,11 @@ export const searchByText = (query: string) => apiRequest<Image[]>("/search/", "
 // Search images by image
 export const searchByImage = (imageUrl: string) =>
   apiRequest<Image[]>("/search-by-image/", "POST", { image_url: imageUrl })
+
+// Get detailed info for an image
+export const getImageInfo = (imageId: number) =>
+  apiRequest<Image>("/image-info/", "POST", { image_id: imageId })
+
+// Get another user's images by username
+export const getUserImagesByUsername = (username: string) =>
+  apiRequest<Image[]>('/user-images/', 'POST', { username }, false)

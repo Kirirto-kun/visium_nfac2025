@@ -1,6 +1,7 @@
 annotated-types==0.7.0
 anyio==4.9.0
 bcrypt==4.3.0
+cachetools==5.5.2
 certifi==2025.4.26
 charset-normalizer==3.4.1
 click==8.1.8
@@ -12,6 +13,8 @@ email_validator==2.2.0
 fastapi==0.115.12
 filelock==3.18.0
 fsspec==2025.3.2
+google-auth==2.39.0
+google-genai==1.13.0
 greenlet==3.2.1
 h11==0.16.0
 httpcore==1.0.9
@@ -33,6 +36,7 @@ pgvector==0.4.1
 pillow==11.2.1
 psycopg2-binary==2.9.10
 pyasn1==0.4.8
+pyasn1-modules==0.2.8
 pydantic==2.11.4
 pydantic_core==2.33.2
 python-dotenv==1.1.0
