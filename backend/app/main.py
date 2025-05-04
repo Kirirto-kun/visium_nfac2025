@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+import requests
 
 app = FastAPI()
 
@@ -274,6 +275,44 @@ async def get_non_private_images():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/get-my-images/")
+async def get_my_images(token: str = Depends(oauth2_scheme)):
+    try:
+        jwt_payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = jwt_payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.username == username).first()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            results = db.query(Image).filter(Image.user_id == user.id).all()
+
+            if not results:
+                raise HTTPException(status_code=404, detail="No images found")
+
+            return [
+                {
+                    "id": row.id,
+                    "image_url": row.image_url,
+                    "description": row.description,
+                    "likes_count": row.likes_count
+                } for row in results
+            ]
+
+        finally:
+            db.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/comments/")
 async def add_comment(
     payload: dict = Body(...),
@@ -392,5 +431,58 @@ async def unlike_post(payload: dict = Body(...), token: str = Depends(oauth2_sch
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error unliking post: {e}")
+
+@app.post("/generate-image/")
+async def generate_image_with_dalle(payload: dict = Body(...), token: str = Depends(oauth2_scheme)):
+    try:
+        jwt_payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = jwt_payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        prompt = payload.get("prompt")
+        size = "1024x1024"
+        style = payload.get("style", "vivid")
+        quality = "standard"
+        n = 1
+
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt is required")
+
+        dalle_url = os.getenv("DALLE_URL")
+        dalle_api_key = os.getenv("DALLE_API")
+
+        if not dalle_url or not dalle_api_key:
+            raise HTTPException(status_code=500, detail="DALL-E API configuration is missing")
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {dalle_api_key}"
+        }
+
+        data = {
+            "model": "dall-e-3",
+            "prompt": prompt,
+            "size": size,
+            "style": style,
+            "quality": quality,
+            "n": n
+        }
+
+        response = requests.post(dalle_url, headers=headers, json=data)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=f"DALL-E API error: {response.text}")
+        response_data = response.json()
+        if "data" in response_data and len(response_data["data"]) > 0:
+            image_url = response_data["data"][0].get("url")
+            if image_url:
+                return {"url": image_url}
+        return response.json()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating image: {e}")
 
 
