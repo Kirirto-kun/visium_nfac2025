@@ -69,20 +69,6 @@ export default function GalleryPage() {
     <div className="container py-8 animate-fade-in">
       <h1 className="text-3xl font-bold mb-8">Explore Gallery</h1>
 
-      <div className="flex gap-2 mb-8">
-        <Input
-          placeholder="Search images..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          className="max-w-md"
-        />
-        <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
-          <Search className="h-4 w-4 mr-2" />
-          Search
-        </Button>
-      </div>
-
       {isLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
