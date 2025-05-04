@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Depends, Body
+from fastapi import FastAPI, HTTPException, Query, Depends, Body, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -16,8 +16,20 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import requests
+from io import BytesIO
+import traceback
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this to restrict origins in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 image_embedder = ClipImageEmbedder()
 text_embedder = ClipTextEmbedder()
@@ -137,6 +149,7 @@ async def add_image_with_url(payload: dict = Body(...), token: str = Depends(oau
 
         image_url = payload.get("image_url")
         description = payload.get("description")
+        is_ai_generated = bool(payload.get("is_ai_generated", False))
         if not image_url:
             raise HTTPException(status_code=400, detail="Image URL is required")
 
@@ -152,6 +165,7 @@ async def add_image_with_url(payload: dict = Body(...), token: str = Depends(oau
             new_image = Image(
                 user_id=user.id,
                 image_url=image_url,
+                is_ai_generated=is_ai_generated,
                 description=description,
                 vector_embedding=embedding
             )
@@ -228,10 +242,6 @@ async def search_images(
                     "id": row.id,
                     "image_url": row.image_url,
                     "description": row.description,
-                    "width": row.width,
-                    "height": row.height,
-                    "size": row.size,
-                    "format": row.format,
                     "likes_count": row.likes_count,
                     "similarity": round(row.similarity, 4)
                 } for row in results
@@ -248,12 +258,51 @@ async def search_images(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/get-images/")
-async def get_non_private_images():
+
+@app.post("/search-by-image/")
+async def search_by_image(payload: dict = Body(...), min_similarity: float = Query(0, ge=0.0, le=1.0), page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100)):
     try:
+        image_url = payload.get("image_url")
+        embedding = image_embedder.get_embedding(image_url)
+
+        if len(embedding) != 512:
+            raise HTTPException(status_code=400, detail="Invalid embedding dimension")
+
         db = SessionLocal()
         try:
-            results = db.query(Image).filter(Image.is_private == False).all()
+            embedding_str = ",".join(map(str, embedding))
+            offset = (page - 1) * per_page
+
+            sql_query = text("""
+                WITH ranked_results AS (
+                    SELECT 
+                        id,
+                        image_url,
+                        description,
+                        width,
+                        height,
+                        size,
+                        format,
+                        likes_count,
+                        1 - (vector_embedding <=> :embedding) AS similarity,
+                        ROW_NUMBER() OVER (
+                            ORDER BY (vector_embedding <=> :embedding)
+                        ) AS rank
+                    FROM images
+                    WHERE 1 - (vector_embedding <=> :embedding) > :min_similarity
+                )
+                SELECT id, image_url, description, width, height, size, format, likes_count, similarity
+                FROM ranked_results
+                WHERE rank BETWEEN :offset AND :offset + :limit
+                ORDER BY rank
+            """)
+
+            results = db.execute(sql_query, {
+                "embedding": f"[{embedding_str}]",
+                "min_similarity": min_similarity,
+                "offset": offset,
+                "limit": per_page
+            }).fetchall()
 
             if not results:
                 raise HTTPException(status_code=404, detail="No images found")
@@ -263,7 +312,39 @@ async def get_non_private_images():
                     "id": row.id,
                     "image_url": row.image_url,
                     "description": row.description,
-                    "likes_count": row.likes_count
+                    "likes_count": row.likes_count,
+                    "similarity": round(row.similarity, 4)
+                } for row in results
+            ]
+
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        finally:
+            db.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching by image: {e}")
+
+@app.get("/get-images/")
+async def get_non_private_images():
+    try:
+        db = SessionLocal()
+        try:
+            results = db.query(Image, User.username).join(User, Image.user_id == User.id).filter(Image.is_private == False).all()
+
+            if not results:
+                raise HTTPException(status_code=404, detail="No images found")
+
+            return [
+                {
+                    "id": row.Image.id,
+                    "username": row.username,
+                    "image_url": row.Image.image_url,
+                    "description": row.Image.description,
+                    "likes_count": row.Image.likes_count
                 } for row in results
             ]
 
@@ -300,6 +381,7 @@ async def get_my_images(token: str = Depends(oauth2_scheme)):
                     "id": row.id,
                     "image_url": row.image_url,
                     "description": row.description,
+                    "is_ai_generated": row.is_ai_generated,
                     "likes_count": row.likes_count
                 } for row in results
             ]
@@ -312,6 +394,39 @@ async def get_my_images(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/user-images/")
+async def get_user_images(payload: dict = Body(...)):
+    try:
+        username = payload.get("username")
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.username == username).first()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            images = db.query(Image).filter(Image.user_id == user.id).all()
+
+            if not images:
+                return []
+
+            return [
+                {
+                    "id": image.id,
+                    "image_url": image.image_url,
+                    "description": image.description,
+                    "is_ai_generated": image.is_ai_generated,
+                    "created_at": image.created_at,
+                    "likes_count": image.likes_count
+                } for image in images
+            ]
+
+        finally:
+            db.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching user images: {e}")
 
 @app.post("/comments/")
 async def add_comment(
@@ -354,6 +469,41 @@ async def add_comment(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding comment: {e}")
+
+
+@app.post("/comments/image/")
+async def get_comments_for_image(payload: dict = Body(...)):
+    try:
+        image_id = payload.get("image_id")
+        if not image_id:
+            raise HTTPException(status_code=400, detail="Image ID is required")
+
+        db = SessionLocal()
+        try:
+            comments = db.query(Comment, User.username).join(User, Comment.user_id == User.id).filter(Comment.image_id == image_id).all()
+
+            if not comments:
+                return []
+
+            return [
+                {
+                    "id": comment.Comment.id,
+                    "username": comment.username,
+                    "image_id": comment.Comment.image_id,
+                    "parent_comment_id": comment.Comment.parent_comment_id,
+                    "content": comment.Comment.content,
+                    "created_at": comment.Comment.created_at,
+                } for comment in comments
+            ]
+
+        finally:
+            db.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching comments: {e}")
+
 
 @app.post("/likes/")
 async def like_post(payload: dict = Body(...), token: str = Depends(oauth2_scheme)):

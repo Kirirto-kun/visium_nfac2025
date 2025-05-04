@@ -12,6 +12,7 @@ class Image(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     image_url = Column(String, nullable=False)
     is_private = Column(Boolean, default=False)
+    is_ai_generated = Column(Boolean, default=False)
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     width = Column(Integer, CheckConstraint("width > 0"))
