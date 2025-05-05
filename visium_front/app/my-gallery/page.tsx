@@ -49,8 +49,10 @@ export default function MyGalleryPage() {
     return null // Will redirect in useEffect
   }
 
+  // All images (no filtering needed here)
+   
   return (
-    <div className="container py-8">
+    <div className="container py-8 animate-fade-in">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My Gallery</h1>
         <div className="flex gap-2">
@@ -68,35 +70,28 @@ export default function MyGalleryPage() {
           </Button>
         </div>
       </div>
+      <nav className="flex space-x-4 mb-8">
+        <Link href="/my-gallery" className="text-primary font-medium hover:underline">All</Link>
+        <Link href="/my-gallery/ai" className="text-primary font-medium hover:underline">AI Only</Link>
+        <Link href="/my-gallery/non-ai" className="text-primary font-medium hover:underline">Photos Only</Link>
+      </nav>
 
       {isLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : images.length > 0 ? (
-        <div className="image-grid">
-          {images.map((image) => (
-            <ImageCard key={image.id} image={image} onLikeChange={handleLikeChange} />
-          ))}
-        </div>
       ) : (
-        <div className="text-center py-20">
-          <p className="text-xl text-gray-500 dark:text-gray-400 mb-4">You haven't uploaded any images yet</p>
-          <div className="flex justify-center gap-4">
-            <Button asChild>
-              <Link href="/upload">
-                <Plus className="h-4 w-4 mr-2" />
-                Upload Image
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/generate">
-                <Plus className="h-4 w-4 mr-2" />
-                Generate Image
-              </Link>
-            </Button>
+        images.length > 0 ? (
+          <div className="image-grid">
+            {images.map(image => (
+              <ImageCard key={image.id} image={image} onLikeChange={handleLikeChange} />
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-xl text-gray-500 dark:text-gray-400">You haven't added any images yet</p>
+          </div>
+        )
       )}
     </div>
   )
