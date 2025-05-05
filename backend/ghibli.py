@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 from PIL import Image
 from io import BytesIO
-GEMINI_API = "AIzaSyAUTV28-Vd8UKyEq6glDn43mBJ_6IqupQA"
+GEMINI_API = "GEMINI_API_KEY"
 
 client = genai.Client(api_key=GEMINI_API)
 

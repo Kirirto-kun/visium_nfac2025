@@ -19,6 +19,12 @@ import requests
 from io import BytesIO
 import traceback
 from fastapi.middleware.cors import CORSMiddleware
+from PIL import ImageDraw
+import base64
+import json
+import tempfile
+from fastapi.responses import StreamingResponse
+from dalle_chat import edit_image
 
 app = FastAPI()
 
@@ -380,6 +386,7 @@ async def get_my_images(token: str = Depends(oauth2_scheme)):
                 {
                     "id": row.id,
                     "image_url": row.image_url,
+                    "username": "My",
                     "description": row.description,
                     "is_ai_generated": row.is_ai_generated,
                     "likes_count": row.likes_count
@@ -413,6 +420,7 @@ async def get_user_images(payload: dict = Body(...)):
                 {
                     "id": image.id,
                     "image_url": image.image_url,
+                    "username": username,
                     "description": image.description,
                     "is_ai_generated": image.is_ai_generated,
                     "created_at": image.created_at,
@@ -525,7 +533,15 @@ async def like_post(payload: dict = Body(...), token: str = Depends(oauth2_schem
 
             existing_like = db.query(Like).filter(Like.user_id == user.id, Like.image_id == image_id).first()
             if existing_like:
-                raise HTTPException(status_code=400, detail="You already liked this post")
+                # Redirect to unlike_post logic
+                db.delete(existing_like)
+
+                image = db.query(Image).filter(Image.id == image_id).first()
+                if image and image.likes_count > 0:
+                    image.likes_count -= 1
+
+                db.commit()
+                return {"message": "Post unliked successfully"}
 
             new_like = Like(user_id=user.id, image_id=image_id)
             db.add(new_like)
@@ -592,10 +608,11 @@ async def generate_image_with_dalle(payload: dict = Body(...), token: str = Depe
 
         prompt = payload.get("prompt")
         size = "1024x1024"
-        style = payload.get("style", "vivid")
+        style = "vivid"
         quality = "standard"
         n = 1
-
+        prommt_style = payload.get("style")
+        prompt = prompt + " in style " + prommt_style
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt is required")
 
@@ -663,5 +680,38 @@ async def get_image_info(payload: dict = Body(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching image information: {e}")
+
+@app.post("/edit-image/", response_class=StreamingResponse)
+async def edit_image_endpoint(
+    file: UploadFile = File(...),
+    prompt: str = Body(...),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Endpoint to edit an uploaded image using a text prompt via DALL-E edits API.
+    Returns the edited image as PNG stream.
+    """
+    # Verify token
+    jwt_payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    username: str = jwt_payload.get("sub")
+    if username is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Read uploaded file
+    content = await file.read()
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    # Perform edit
+    edited_img = edit_image(tmp_path, prompt)
+
+    # Convert to PNG buffer
+    buf = BytesIO()
+    edited_img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/png")
 
 
