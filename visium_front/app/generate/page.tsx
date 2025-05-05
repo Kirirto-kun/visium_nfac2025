@@ -30,14 +30,23 @@ export default function GeneratePage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/auth/login")
     }
-  }, [user, router])
+  }, [authLoading, user, router])
+
+  // Wait until auth status is determined
+  if (authLoading) {
+    return null
+  }
+
+  if (!user) {
+    return null // Redirecting to login
+  }
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
