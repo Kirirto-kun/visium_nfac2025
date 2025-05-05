@@ -1,10 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getImageInfo, type Image as ImageType } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, User } from "lucide-react"
+import { Loader2, ArrowLeft, User, Download, Share2 } from "lucide-react"
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 import Image from "next/image"
 import { CommentSection } from "@/components/comment-section"
 import Link from "next/link"
@@ -14,6 +24,31 @@ export default function ImageDetailPage() {
   const router = useRouter()
   const [image, setImage] = useState<ImageType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [currentUrl, setCurrentUrl] = useState('')
+
+  const handleDownload = useCallback(async () => {
+    if (!image?.image_url) return
+    try {
+      const response = await fetch(image.image_url)
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `${image.id}-${image.description || 'image'}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      console.error('Download failed', err)
+    }
+  }, [image])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentUrl(window.location.href)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchImage = async () => {
@@ -58,10 +93,53 @@ export default function ImageDetailPage() {
 
   return (
     <div className="container py-8">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-6">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back
-      </Button>
+      <div className="flex items-center mb-6 space-x-2">
+        <Button variant="ghost" onClick={() => router.back()}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        {image?.image_url && (
+          <>
+            <Button variant="outline" onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Share Image</DialogTitle>
+                  <DialogDescription>Copy the URL below to share:</DialogDescription>
+                </DialogHeader>
+                <div className="mt-2">
+                  <input
+                    readOnly
+                    value={currentUrl}
+                    onFocus={e => e.target.select()}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigator.clipboard.writeText(currentUrl)}
+                  >
+                    Copy
+                  </Button>
+                  <DialogClose asChild>
+                    <Button>Close</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+      </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         <div className="relative aspect-square rounded-lg overflow-hidden border">
@@ -108,7 +186,7 @@ export default function ImageDetailPage() {
                   strokeLinejoin="round"
                   className="h-4 w-4"
                 >
-                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5 2.74-2 4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                 </svg>
                 <span>{image.likes_count} likes</span>
               </div>
