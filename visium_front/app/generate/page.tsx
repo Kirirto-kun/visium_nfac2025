@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -15,10 +15,7 @@ import Image from "next/image"
 
 const STYLES = [
   { value: "vivid", label: "Vivid" },
-  { value: "realistic", label: "Realistic" },
-  { value: "anime", label: "Anime" },
-  { value: "painting", label: "Painting" },
-  { value: "sketch", label: "Sketch" },
+  { value: "natural", label: "Natural" },
 ]
 
 export default function GeneratePage() {
@@ -31,10 +28,11 @@ export default function GeneratePage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  if (!user) {
-    router.push("/auth/login")
-    return null
-  }
+  useEffect(() => {
+    if (!user) {
+      router.push("/auth/login")
+    }
+  }, [user, router])
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {

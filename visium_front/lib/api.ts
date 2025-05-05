@@ -1,6 +1,6 @@
 import { toast } from "@/components/ui/use-toast"
 
-const BASE_URL = "https://visium-backend-1c09dc82b726.herokuapp.com"
+export const BASE_URL = "http://127.0.0.1:8000"
 
 // Helper function to get the auth token
 const getAuthToken = (): string | null => {
@@ -134,3 +134,5 @@ export const getImageInfo = (imageId: number) =>
 // Get another user's images by username
 export const getUserImagesByUsername = (username: string) =>
   apiRequest<Image[]>('/user-images/', 'POST', { username }, false)
+
+export { getAuthToken }

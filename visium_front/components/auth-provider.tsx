@@ -37,7 +37,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
-  const baseUrl = "https://visium-backend-1c09dc82b726.herokuapp.com"
+  const baseUrl = "http://127.0.0.1:8000"
 
   // Load user from localStorage on initial render and set up storage event listener
   useEffect(() => {

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/hooks/use-auth"
-import { uploadImage } from "@/lib/api"
+import { uploadImage, BASE_URL, getAuthToken } from "@/lib/api"
 import { Loader2, Upload, ImagePlus } from "lucide-react"
 import Image from "next/image"
 import { UploadButton, UploadDropzone } from "@/utils/uploadthing"
@@ -22,6 +22,12 @@ export default function UploadPage() {
   const { user } = useAuth()
   const router = useRouter()
 
+  // new states for AI editing
+  const [localFile, setLocalFile] = useState<File | null>(null)
+  const [prompt, setPrompt] = useState("")
+  const [isEditing, setIsEditing] = useState(false)
+  const [blobFile, setBlobFile] = useState<File | null>(null)
+
   // Use useEffect for navigation to avoid state updates during render
   useEffect(() => {
     if (!user) {
@@ -34,38 +40,62 @@ export default function UploadPage() {
     return null
   }
 
-  const handleSaveToGallery = async () => {
-    if (!imageUrl) {
-      toast({
-        title: "No image uploaded",
-        description: "Please upload an image first",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsUploading(true)
-
+  // Handle AI edit
+  const handleEdit = async () => {
+    if (!localFile || !prompt) return
+    setIsEditing(true)
     try {
-      // Show the URL being sent to backend for debugging purposes
-      console.log("Sending image URL to backend:", imageUrl)
-      
-      // Send the URL we got from UploadThing to our backend API
-      await uploadImage(imageUrl, description)
-
-      toast({
-        title: "Image saved",
-        description: "Your image has been added to your gallery",
-      })
-
-      router.push("/my-gallery")
+      const formData = new FormData()
+      formData.append('file', localFile)
+      formData.append('prompt', prompt)
+      // attach Bearer token
+      const token = getAuthToken()
+      const res = await fetch(`${BASE_URL}/edit-image/`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: formData })
+      if (!res.ok) throw new Error('Edit request failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setImageUrl(url)
+      // create File for further edits or saving
+      const file = new File([blob], 'edited.png', { type: 'image/png' })
+      setBlobFile(file)
+      toast({ title: 'Edit complete', description: 'Image has been edited.' })
+      // after first edit, use blobFile as new source
+      setLocalFile(file)
     } catch (error) {
-      console.error("Save error:", error)
-      toast({
-        title: "Save failed",
-        description: "There was an error saving your image",
-        variant: "destructive",
-      })
+      toast({ title: 'Edit failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' })
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
+  // Modify save: upload blobFile if available
+  const handleSaveToGallery = async () => {
+    // Determine source: edited image URL or original local file
+    let urlToSend: string | null = null
+    let isAiImage = false
+    if (blobFile && imageUrl) {
+      urlToSend = imageUrl
+      isAiImage = true
+    } else if (localFile) {
+      // upload original local file via UploadThing
+      const up = new FormData()
+      up.append('file', localFile)
+      const token = getAuthToken()
+      const upl = await fetch('/api/uploadthing/server-upload', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: up })
+      if (!upl.ok) throw new Error('UploadThing upload failed')
+      const { urls } = await upl.json() as { urls?: string[] }
+      if (!urls?.length) throw new Error('No URL returned from upload')
+      urlToSend = urls[0]
+    }
+    if (!urlToSend) return
+    setIsUploading(true)
+    try {
+      // Post to backend: flag AI images only when editing was done
+      await uploadImage(urlToSend, description, isAiImage)
+      toast({ title: 'Image saved', description: 'Your image has been added to your gallery' })
+      router.push('/my-gallery')
+    } catch (error) {
+      toast({ title: 'Save failed', description: error instanceof Error ? error.message : 'Error saving', variant: 'destructive' })
     } finally {
       setIsUploading(false)
     }
@@ -75,140 +105,54 @@ export default function UploadPage() {
     <div className="container py-8 max-w-2xl">
       <Card>
         <CardHeader>
-          <CardTitle>Upload Image</CardTitle>
-          <CardDescription>Share your images with the community</CardDescription>
+          <CardTitle>Edit Image with AI</CardTitle>
+          <CardDescription>Upload an image, enter prompt, and iteratively edit it</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Upload Image</Label>
-            {!imageUrl ? (
-              <div className="space-y-6">
-                {/* Custom styled upload button for more visibility */}
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-lg p-8 text-center">
-                  <ImagePlus className="h-12 w-12 text-primary/40 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Upload your image</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Click the button below to select a file</p>
-                  
-                  <UploadButton
-                    endpoint="imageUploader"
-                    onClientUploadComplete={(res) => {
-                      console.log("Upload completed:", res)
-                      if (res && res.length > 0) {
-                        // Store the full response for debugging
-                        setUploadedResponse(res[0])
-                        
-                        // Get the URL returned from UploadThing after successful upload
-                        const url = res[0].url || res[0].fileUrl || "";
-                        setImageUrl(url)
-                        
-                        console.log("Image URL set to:", url)
-                        
-                        toast({
-                          title: "Upload complete",
-                          description: "Your image has been uploaded successfully",
-                        })
-                      }
-                    }}
-                    onUploadError={(error) => {
-                      console.error("Upload error:", error)
-                      toast({
-                        title: "Upload failed",
-                        description: error.message,
-                        variant: "destructive",
-                      })
-                    }}
-                    // Override default UploadThing styles to make button prominent
-                    className="
-                      ut-button:bg-primary 
-                      ut-button:text-primary-foreground 
-                      ut-button:hover:bg-primary/90
-                      ut-button:px-6 
-                      ut-button:py-2 
-                      ut-button:rounded-md
-                      ut-button:font-semibold
-                      ut-button:transition-all
-                      ut-button:duration-200
-                      ut-button:shadow-sm
-                      ut-allowed-content:ut-uploading:opacity-75
-                    "
-                    content={{
-                      button({ ready }) {
-                        if (ready) return <div><p style={{color: "blue"}}>Upload 1 File</p></div>
-                        return 'Getting ready...'
-                      },
-                      allowedContent({ ready }) {
-                        if (ready) return 'Images up to 4MB'
-                        return 'Checking...'
-                      }
-                    }}
-                  />
-                  
-                  <p className="text-xs text-muted-foreground mt-4">
-                    Supported formats: JPEG, PNG, GIF
-                  </p>
-                </div>
-                
-                
+          {/* File + prompt inputs or preview */}
+          {!imageUrl ? (
+            <div className="space-y-4">
+              <div>
+                <Label>Choose Image</Label>
+                <input type="file" accept="image/*" onChange={e => { if (e.target.files) setLocalFile(e.target.files[0]) }} />
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
-                  <Image src={imageUrl} alt="Uploaded image" fill className="object-contain" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={() => setImageUrl(null)}
-                  >
-                    Change
-                  </Button>
-                </div>
-                
-                {/* Display the URL for verification */}
-                <div className="rounded bg-muted p-2 text-xs overflow-auto">
-                  <p className="font-semibold">Image URL:</p>
-                  <p className="break-all">{imageUrl}</p>
-                </div>
+              <div>
+                <Label htmlFor="prompt">Prompt</Label>
+                <Textarea id="prompt" placeholder="Enter AI prompt..." value={prompt} onChange={e => setPrompt(e.target.value)} />
               </div>
-            )}
-          </div>
+              <Button onClick={handleEdit} disabled={!localFile || !prompt || isEditing} className="w-full">
+                {isEditing ? 'Editing...' : 'Edit Image'}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
+                <Image src={imageUrl} alt="Edited image" fill className="object-contain" />
+                <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => { setImageUrl(null); setLocalFile(null); setBlobFile(null); setPrompt('') }}>Reset</Button>
+              </div>
+              <div>
+                <Label htmlFor="prompt">New Prompt</Label>
+                <Textarea id="prompt" placeholder="Enter new prompt..." value={prompt} onChange={e => setPrompt(e.target.value)} />
+              </div>
+              <Button onClick={handleEdit} disabled={!prompt || isEditing} className="w-full">
+                {isEditing ? 'Editing...' : 'Re-Edit Image'}
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Add a description for your image..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <Textarea id="description" placeholder="Add a description for your image..." value={description} onChange={e => setDescription(e.target.value)} />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
-          <Button onClick={handleSaveToGallery} disabled={!imageUrl || isUploading} className="w-full">
+          <Button onClick={handleSaveToGallery} disabled={!(imageUrl || localFile) || isUploading} className="w-full">
             {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
+              'Saving...'
             ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Save to Gallery
-              </>
+              'Save to Gallery'
             )}
           </Button>
-          
-          {/* Debug info - this will help understand what's happening */}
-          {uploadedResponse && (
-            <div className="w-full rounded bg-muted p-2 text-xs">
-              <details>
-                <summary className="cursor-pointer font-semibold">Upload Response Details</summary>
-                <pre className="mt-2 overflow-auto">
-                  {JSON.stringify(uploadedResponse, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
         </CardFooter>
       </Card>
     </div>

@@ -177,11 +177,12 @@ export default function SearchPage() {
                         variant: "destructive",
                       })
                     }}
-                    className="ut-button:bg-primary ut-label:text-primary"
+                    className="min-h-[200px] w-full max-w-md mx-auto border-2 border-dashed border-gray-300 p-6 text-center flex flex-col items-center justify-center bg-white
+                      ut-label:!text-gray-800 ut-button:!block ut-button:!bg-blue-600 ut-button:!text-white ut-button:!px-4 ut-button:!py-2 ut-button:!rounded ut-button:hover:!bg-blue-700"
                   />
                 ) : (
                   <div className="space-y-4">
-                    <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border">
+                    <div className="relative aspect-video w-full max-w-md rounded-lg border">
                       <Image src={imagePreview || "/placeholder.svg"} alt="Preview" fill className="object-contain" />
                       <Button
                         variant="outline"
