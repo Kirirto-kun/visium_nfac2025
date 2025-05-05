@@ -43,14 +43,22 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const loadUserFromStorage = () => {
       const storedUser = localStorage.getItem("user")
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser)
-          setUser(parsedUser)
-          setIsAuthenticated(true)
-        } catch (error) {
-          console.error("Failed to parse stored user:", error)
+      const expiryString = localStorage.getItem("userExpiry")
+      if (storedUser && expiryString) {
+        const expiry = Number.parseInt(expiryString, 10)
+        if (Date.now() < expiry) {
+          try {
+            const parsedUser = JSON.parse(storedUser)
+            setUser(parsedUser)
+            setIsAuthenticated(true)
+          } catch (error) {
+            console.error("Failed to parse stored user:", error)
+            localStorage.removeItem("user")
+            localStorage.removeItem("userExpiry")
+          }
+        } else {
           localStorage.removeItem("user")
+          localStorage.removeItem("userExpiry")
         }
       }
       setIsLoading(false)

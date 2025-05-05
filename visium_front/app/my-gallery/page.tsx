@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ImageCard } from "@/components/image-card"
-import { getUserImages, type Image as ImageType } from "@/lib/api"
+import { getUserImages, likeImage, unlikeImage, type Image as ImageType } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Loader2, Plus } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
@@ -11,46 +11,68 @@ import Link from "next/link"
 
 export default function MyGalleryPage() {
   const [images, setImages] = useState<ImageType[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { user } = useAuth()
+  const [isImagesLoading, setIsImagesLoading] = useState(true)
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
+  // Redirect to login when auth state is known and no user
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/auth/login")
-      return
     }
+  }, [authLoading, user, router])
 
-    const fetchImages = async () => {
-      try {
-        const data = await getUserImages()
-        setImages(data)
-      } catch (error) {
-        console.error("Error fetching images:", error)
-      } finally {
-        setIsLoading(false)
+  // Fetch user images once authenticated
+  useEffect(() => {
+    if (user) {
+      const fetchImages = async () => {
+        try {
+          const data = await getUserImages()
+          setImages(data)
+        } catch (error) {
+          console.error("Error fetching images:", error)
+        } finally {
+          setIsImagesLoading(false)
+        }
       }
+      fetchImages()
     }
+  }, [user])
 
-    fetchImages()
-  }, [user, router])
+  // Handle like/unlike actions and update UI
+  const handleLikeChange = async (id: number, liked: boolean) => {
+    try {
+      if (liked) {
+        await likeImage(id)
+      } else {
+        await unlikeImage(id)
+      }
+      setImages(prev =>
+        prev.map(img =>
+          img.id === id
+            ? {
+                ...img,
+                likes_count: img.likes_count + (liked ? 1 : -1),
+                user_has_liked: liked,
+              }
+            : img
+        )
+      )
+    } catch (error) {
+      console.error("Error updating like status:", error)
+    }
+  }
 
-  const handleLikeChange = (imageId: number, liked: boolean) => {
-    setImages((prevImages) =>
-      prevImages.map((img) =>
-        img.id === imageId
-          ? { ...img, user_has_liked: liked, likes_count: liked ? img.likes_count + 1 : img.likes_count - 1 }
-          : img,
-      ),
-    )
+  // Wait until auth status determined
+  if (authLoading) {
+    return null
   }
 
   if (!user) {
-    return null // Will redirect in useEffect
+    return null // Redirecting
   }
 
   // All images (no filtering needed here)
-   
   return (
     <div className="container py-8 animate-fade-in">
       <div className="flex justify-between items-center mb-8">
@@ -76,7 +98,7 @@ export default function MyGalleryPage() {
         <Link href="/my-gallery/non-ai" className="text-primary font-medium hover:underline">Photos Only</Link>
       </nav>
 
-      {isLoading ? (
+      {isImagesLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>

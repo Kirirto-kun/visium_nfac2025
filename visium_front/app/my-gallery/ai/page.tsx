@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ImageCard } from "@/components/image-card"
-import { getUserImages, type Image as ImageType } from "@/lib/api"
+import { getUserImages, likeImage, unlikeImage, type Image as ImageType } from "@/lib/api"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
@@ -10,8 +10,8 @@ import Link from "next/link"
 
 export default function MyAiGalleryPage() {
   const [images, setImages] = useState<ImageType[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { user } = useAuth()
+  const [isImagesLoading, setIsImagesLoading] = useState(true)
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   // Handle like/unlike updates locally
@@ -26,25 +26,34 @@ export default function MyAiGalleryPage() {
   }
 
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/auth/login")
-      return
     }
-    const fetchImages = async () => {
-      try {
-        const data = await getUserImages()
-        const aiOnly = data.filter(img => img.is_ai_generated)
-        setImages(aiOnly)
-      } catch (error) {
-        console.error("Error fetching AI images:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchImages()
-  }, [user, router])
 
-  if (!user) return null
+    if (user) {
+      const fetchImages = async () => {
+        try {
+          const data = await getUserImages()
+          const aiOnly = data.filter(img => img.is_ai_generated)
+          setImages(aiOnly)
+        } catch (error) {
+          console.error("Error fetching AI images:", error)
+        } finally {
+          setIsImagesLoading(false)
+        }
+      }
+      fetchImages()
+    }
+  }, [authLoading, user, router])
+
+  // Wait until auth status is determined
+  if (authLoading) {
+    return null
+  }
+
+  if (!user) {
+    return null
+  }
 
   return (
     <div className="container py-8 animate-fade-in">
@@ -55,7 +64,7 @@ export default function MyAiGalleryPage() {
       </nav>
       <h1 className="text-3xl font-bold mb-8">My AI Generated Images</h1>
 
-      {isLoading ? (
+      {isImagesLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
