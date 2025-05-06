@@ -63,16 +63,14 @@ export default function MyGalleryPage() {
     }
   }
 
-  // Wait until auth status determined
   if (authLoading) {
     return null
   }
 
   if (!user) {
-    return null // Redirecting
+    return null
   }
 
-  // All images (no filtering needed here)
   return (
     <div className="container py-8 animate-fade-in">
       <div className="flex justify-between items-center mb-8 pl-4">

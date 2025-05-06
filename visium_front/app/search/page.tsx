@@ -164,9 +164,8 @@ export default function SearchPage() {
                     onClientUploadComplete={(res) => {
                       if (res && res.length > 0) {
                         setImagePreview(res[0].url)
-                        setImageFile(null) // We don't need the file anymore
+                        setImageFile(null)
 
-                        // Automatically search with the uploaded image
                         handleImageSearch(res[0].url)
                       }
                     }}
