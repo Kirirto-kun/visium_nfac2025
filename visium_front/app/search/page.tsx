@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,31 @@ export default function SearchPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const { toast } = useToast()
+
+  // Restore search state from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const q = localStorage.getItem('searchQuery')
+    const tab = localStorage.getItem('searchActiveTab')
+    const res = localStorage.getItem('searchResults')
+    const img = localStorage.getItem('searchImagePreview')
+    if (q) setSearchQuery(q)
+    if (tab) setActiveTab(tab)
+    if (res) {
+      try { setSearchResults(JSON.parse(res)) } catch {} 
+    }
+    if (img) setImagePreview(img)
+  }, [])
+
+  // Save search state to localStorage on changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('searchQuery', searchQuery)
+    localStorage.setItem('searchActiveTab', activeTab)
+    localStorage.setItem('searchResults', JSON.stringify(searchResults))
+    if (imagePreview) localStorage.setItem('searchImagePreview', imagePreview)
+    else localStorage.removeItem('searchImagePreview')
+  }, [searchQuery, activeTab, searchResults, imagePreview])
 
   const handleTextSearch = async () => {
     if (!searchQuery.trim()) {

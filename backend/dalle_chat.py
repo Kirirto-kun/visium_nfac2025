@@ -14,19 +14,19 @@ from io import BytesIO
 load_dotenv()
 # === Настройки ===
 api_key = os.getenv("OPENAI_API_KEY")
-image_path = "or.png"
-img = Image.open(image_path)
-width, height = img.size
+# image_path = "or.png"
+# img = Image.open(image_path)
+# width, height = img.size
 
-mask = Image.new("RGBA", (width, height), (0, 0, 0, 255))
-draw = ImageDraw.Draw(mask)
-draw.rectangle([(width//4, height//4), (3*width//4, 3*height//4)], fill=(0, 0, 0, 0))
-mask.save("mask.png")
+# mask = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+# draw = ImageDraw.Draw(mask)
+# draw.rectangle([(width//4, height//4), (3*width//4, 3*height//4)], fill=(0, 0, 0, 0))
+# mask.save("mask.png")
 
-mask_path = "mask.png"
-prompt = "create action figure, as if a person is a doll in a package"
-output_path = "result.png"
-size = (512, 512)  # Должно быть квадратным: 256x256, 512x512 или 1024x1024 для DALL·E 2
+# mask_path = "mask.png"
+# prompt = "create action figure, as if a person is a doll in a package"
+# output_path = "result.png"
+# size = (512, 512)  # Должно быть квадратным: 256x256, 512x512 или 1024x1024 для DALL·E 2
 
 # === Подготовка изображений ===
 def prepare_image(path, size):

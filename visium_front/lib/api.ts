@@ -1,6 +1,6 @@
 import { toast } from "@/components/ui/use-toast"
 
-export const BASE_URL = "http://127.0.0.1:8000"
+export const BASE_URL = "https://visium-backend-1c09dc82b726.herokuapp.com"
 
 // Helper function to get the auth token, supporting both 'user' and 'jwt' keys
 const getAuthToken = (): string | null => {

@@ -26,7 +26,7 @@ import tempfile
 from fastapi.responses import StreamingResponse
 from dalle_chat import edit_image
 from google.oauth2 import id_token
-from google.auth.transport import requests
+from google.auth.transport.requests import Request as GoogleRequest
 app = FastAPI()
 
 # Add CORS middleware
@@ -138,7 +138,7 @@ async def google_login(payload: GoogleLoginRequest):
     try:
         idinfo = id_token.verify_oauth2_token(
             payload.id_token,
-            requests.Request(),
+            GoogleRequest(),
             audience=GOOGLE_CLIENT_ID
         )
 

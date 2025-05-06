@@ -34,7 +34,7 @@ export default function RegisterPage() {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
-      const res = await axios.post("http://localhost:8000/google-login/", {
+      const res = await axios.post("https://visium-backend-1c09dc82b726.herokuapp.com/google-login/", {
         id_token: credentialResponse.credential,
       })
       localStorage.setItem("jwt", res.data.access_token)
