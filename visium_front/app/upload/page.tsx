@@ -37,6 +37,17 @@ export default function UploadPage() {
     }
   }, [authLoading, user, router])
 
+  // generate preview URL for selected file
+  useEffect(() => {
+    if (localFile) {
+      const url = URL.createObjectURL(localFile)
+      setPreviewUrl(url)
+      return () => URL.revokeObjectURL(url)
+    } else {
+      setPreviewUrl(null)
+    }
+  }, [localFile])
+
   // Wait until auth status is determined
   if (authLoading) return null
   if (!user) return null
@@ -111,6 +122,11 @@ export default function UploadPage() {
           {/* File + prompt inputs or preview */}
           {!imageUrl ? (
             <div className="space-y-4">
+              {previewUrl && (
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
+                  <Image src={previewUrl} alt="Uploaded image preview" fill className="object-contain" />
+                </div>
+              )}
               <div>
                 <Label>Choose Image</Label>
                 <input type="file" accept="image/*" onChange={e => { if (e.target.files) setLocalFile(e.target.files[0]) }} />

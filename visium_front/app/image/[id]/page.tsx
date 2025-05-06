@@ -18,6 +18,10 @@ import {
 import Image from "next/image"
 import { CommentSection } from "@/components/comment-section"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
+import { getAuthToken, BASE_URL, uploadImage } from "@/lib/api"
+import { Label } from "@/components/ui/label"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 export default function ImageDetailPage() {
   const params = useParams()
@@ -25,6 +29,20 @@ export default function ImageDetailPage() {
   const [image, setImage] = useState<ImageType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentUrl, setCurrentUrl] = useState('')
+  const { toast } = useToast()
+  const [actionPrompt, setActionPrompt] = useState('')
+  const [newImageUrl, setNewImageUrl] = useState<string>(image?.image_url || '')
+  const [localFile, setLocalFile] = useState<File | null>(null)
+  const [blobFile, setBlobFile] = useState<File | null>(null)
+  const [isApplying, setIsApplying] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const ACTIONS = [
+    { value: "create action figure, as if a person is a doll in a package", label: "Action Figure" },
+    { value: "change style to ghibli", label: "Ghibli" },
+    { value: "enhance with ai", label: "Enhance" },
+    { value: "AI Barbie Box", label: "Barbie Box" },
+  ]
 
   const handleDownload = useCallback(async () => {
     if (!image?.image_url) return;
@@ -67,6 +85,12 @@ export default function ImageDetailPage() {
   }, [])
 
   useEffect(() => {
+    if (image) {
+      setNewImageUrl(image.image_url)
+    }
+  }, [image])
+
+  useEffect(() => {
     const fetchImage = async () => {
       try {
         const imageId = Number(params.id)
@@ -85,6 +109,55 @@ export default function ImageDetailPage() {
 
     fetchImage()
   }, [params.id])
+
+  const handleApplyAction = async () => {
+    if (!actionPrompt) return
+    setIsApplying(true)
+    try {
+      const resp = await fetch(newImageUrl)
+      const blob = await resp.blob()
+      const file = new File([blob], 'toedit.png', { type: blob.type })
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('prompt', actionPrompt)
+      const token = getAuthToken()
+      const res = await fetch(`${BASE_URL}/edit-image/`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: formData })
+      if (!res.ok) throw new Error('Edit request failed')
+      const editedBlob = await res.blob()
+      const url = URL.createObjectURL(editedBlob)
+      setNewImageUrl(url)
+      const editedFile = new File([editedBlob], 'edited.png', { type: editedBlob.type })
+      setBlobFile(editedFile)
+      setLocalFile(editedFile)
+      toast({ title: 'Action applied', description: `Image updated with: ${actionPrompt}` })
+    } catch (err) {
+      toast({ title: 'Action failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' })
+    } finally {
+      setIsApplying(false)
+    }
+  }
+
+  const handleSaveToGallery = async () => {
+    const target = blobFile || localFile
+    if (!target) return
+    setIsSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', target)
+      const token = getAuthToken()
+      const upl = await fetch('/api/uploadthing/server-upload', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: fd })
+      if (!upl.ok) throw new Error('Upload failed')
+      const { urls } = await upl.json() as { urls?: string[] }
+      if (!urls?.length) throw new Error('No URL returned')
+      await uploadImage(urls[0], image?.description || '', true)
+      toast({ title: 'Image saved', description: 'Your edited image has been saved to your gallery' })
+      router.push('/my-gallery')
+    } catch (err) {
+      toast({ title: 'Save failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -158,14 +231,36 @@ export default function ImageDetailPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="relative aspect-square rounded-lg overflow-hidden border">
-          <Image
-            src={image.image_url || "/placeholder.svg"}
-            alt={image.description || "Image"}
-            fill
-            className="object-contain"
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
+        <div className="space-y-4">
+          <div className="relative aspect-square rounded-lg overflow-hidden border">
+            <Image
+              src={newImageUrl || "/placeholder.svg"}
+              alt={image?.description || "Image"}
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
+          {/* AI Action Controls */}
+          <div className="mb-6 space-y-4">
+            <div>
+              <Label htmlFor="action">AI Action</Label>
+              <Select value={actionPrompt} onValueChange={setActionPrompt}>
+                <SelectTrigger id="action">
+                  <SelectValue placeholder="Select an action" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTIONS.map(a => (<SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleApplyAction} disabled={!actionPrompt || isApplying} className="w-full">
+              {isApplying ? 'Applying...' : 'Apply Action'}
+            </Button>
+            <Button onClick={handleSaveToGallery} disabled={!(blobFile || localFile) || isSaving} className="w-full">
+              {isSaving ? 'Saving...' : 'Save to Gallery'}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-6">
