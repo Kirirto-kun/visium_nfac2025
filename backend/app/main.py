@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Depends, Body, UploadFile, File
+from fastapi import FastAPI, HTTPException, Query, Depends, Body, UploadFile, File, APIRouter
 from pydantic import BaseModel
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,7 +25,8 @@ import json
 import tempfile
 from fastapi.responses import StreamingResponse
 from dalle_chat import edit_image
-
+from google.oauth2 import id_token
+from google.auth.transport import requests
 app = FastAPI()
 
 # Add CORS middleware
@@ -125,6 +126,44 @@ async def login_for_access_token(payload: dict = Body(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error logging in: {e}")
+
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+
+
+@app.post("/google-login/")
+async def google_login(payload: GoogleLoginRequest):
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.id_token,
+            requests.Request(),
+            audience=GOOGLE_CLIENT_ID
+        )
+
+        email = idinfo["email"]
+        username = email.split("@")[0]  # можно доработать под себя
+
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.email == email).first()
+
+            if not user:
+                # Регаем нового
+                user = User(username=username, email=email, password_hash="google-oauth")
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+
+            # Выдаем JWT
+            access_token = create_access_token(data={"sub": user.username})
+            return {"access_token": access_token, "token_type": "bearer"}
+        finally:
+            db.close()
+
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
 
 @app.get("/users/me/")
 async def read_users_me(token: str = Depends(oauth2_scheme)):

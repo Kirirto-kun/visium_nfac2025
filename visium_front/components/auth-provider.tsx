@@ -60,6 +60,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           localStorage.removeItem("user")
           localStorage.removeItem("userExpiry")
         }
+      } else {
+        // Fallback for Google login: JWT stored under 'jwt'
+        const jwt = localStorage.getItem("jwt")
+        if (jwt) {
+          const userData = { username: "", token: jwt }
+          setUser(userData)
+          setIsAuthenticated(true)
+          // Persist in same format
+          const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
+          localStorage.setItem("user", JSON.stringify(userData))
+          localStorage.setItem("userExpiry", expiresAt.toString())
+        }
       }
       setIsLoading(false)
     }
