@@ -24,7 +24,7 @@ draw.rectangle([(width//4, height//4), (3*width//4, 3*height//4)], fill=(0, 0, 0
 mask.save("mask.png")
 
 mask_path = "mask.png"
-prompt = "change style of the image to ghibli style"
+prompt = "create action figure, as if a person is a doll in a package"
 output_path = "result.png"
 size = (512, 512)  # Должно быть квадратным: 256x256, 512x512 или 1024x1024 для DALL·E 2
 

@@ -350,6 +350,7 @@ async def get_non_private_images():
                     "username": row.username,
                     "image_url": row.Image.image_url,
                     "description": row.Image.description,
+                    "is_ai_generated": row.Image.is_ai_generated,
                     "likes_count": row.Image.likes_count
                 } for row in results
             ]
@@ -533,15 +534,7 @@ async def like_post(payload: dict = Body(...), token: str = Depends(oauth2_schem
 
             existing_like = db.query(Like).filter(Like.user_id == user.id, Like.image_id == image_id).first()
             if existing_like:
-                # Redirect to unlike_post logic
-                db.delete(existing_like)
-
-                image = db.query(Image).filter(Image.id == image_id).first()
-                if image and image.likes_count > 0:
-                    image.likes_count -= 1
-
-                db.commit()
-                return {"message": "Post unliked successfully"}
+                return
 
             new_like = Like(user_id=user.id, image_id=image_id)
             db.add(new_like)
@@ -580,8 +573,7 @@ async def unlike_post(payload: dict = Body(...), token: str = Depends(oauth2_sch
 
             existing_like = db.query(Like).filter(Like.user_id == user.id, Like.image_id == image_id).first()
             if not existing_like:
-                raise HTTPException(status_code=400, detail="You have not liked this post")
-
+                return
             db.delete(existing_like)
 
             image = db.query(Image).filter(Image.id == image_id).first()
@@ -665,13 +657,16 @@ async def get_image_info(payload: dict = Body(...)):
             if not image:
                 raise HTTPException(status_code=404, detail="Image not found")
 
+            user = db.query(User).filter(User.id == image.user_id).first()
+
             return {
                 "id": image.id,
                 "image_url": image.image_url,
                 "description": image.description,
                 "is_ai_generated": image.is_ai_generated,
                 "likes_count": image.likes_count,
-                "created_at": image.created_at
+                "created_at": image.created_at,
+                "username": user.username
             }
         finally:
             db.close()

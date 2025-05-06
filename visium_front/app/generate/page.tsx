@@ -14,8 +14,13 @@ import { Loader2, Sparkles, Save } from "lucide-react"
 import Image from "next/image"
 
 const STYLES = [
-  { value: "vivid", label: "Vivid" },
-  { value: "natural", label: "Natural" },
+  { value: "anime style", label: "Anime" },
+  { value: "comics", label: "Comics" },
+  { value: "2D Cartoon", label: "2D Cartoon" },
+  { value: "3D Cartoon", label: "3D Cartoon" },
+  { value: "realistic", label: "Realistic" },
+  { value: "fantasy", label: "Fantasy" },
+  { value: "pixel art", label: "Pixel Art" },
 ]
 
 export default function GeneratePage() {
