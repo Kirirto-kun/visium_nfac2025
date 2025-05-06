@@ -112,16 +112,16 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="container py-8 max-w-2xl">
+    <div className="container py-8 max-w-2xl mx-auto">
       <Card>
-        <CardHeader>
+        <CardHeader className="text-center">
           <CardTitle>Edit Image with AI</CardTitle>
           <CardDescription>Upload an image, enter prompt, and iteratively edit it</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 flex flex-col items-start w-full">
           {/* File + prompt inputs or preview */}
           {!imageUrl ? (
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
               {previewUrl && (
                 <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
                   <Image src={previewUrl} alt="Uploaded image preview" fill className="object-contain" />
@@ -133,21 +133,21 @@ export default function UploadPage() {
               </div>
               <div>
                 <Label htmlFor="prompt">Prompt</Label>
-                <Textarea id="prompt" placeholder="Enter AI prompt..." value={prompt} onChange={e => setPrompt(e.target.value)} />
+                <Textarea id="prompt" className="w-full" placeholder="Enter AI prompt..." value={prompt} onChange={e => setPrompt(e.target.value)} />
               </div>
               <Button onClick={handleEdit} disabled={!localFile || !prompt || isEditing} className="w-full">
                 {isEditing ? 'Editing...' : 'Edit Image'}
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
               <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
                 <Image src={imageUrl} alt="Edited image" fill className="object-contain" />
                 <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => { setImageUrl(null); setLocalFile(null); setBlobFile(null); setPrompt('') }}>Reset</Button>
               </div>
               <div>
                 <Label htmlFor="prompt">New Prompt</Label>
-                <Textarea id="prompt" placeholder="Enter new prompt..." value={prompt} onChange={e => setPrompt(e.target.value)} />
+                <Textarea id="prompt" className="w-full" placeholder="Enter new prompt..." value={prompt} onChange={e => setPrompt(e.target.value)} />
               </div>
               <Button onClick={handleEdit} disabled={!prompt || isEditing} className="w-full">
                 {isEditing ? 'Editing...' : 'Re-Edit Image'}
@@ -155,12 +155,12 @@ export default function UploadPage() {
             </div>
           )}
 
-          <div className="space-y-2">
+          <div className="flex flex-col w-full space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" placeholder="Add a description for your image..." value={description} onChange={e => setDescription(e.target.value)} />
+            <Textarea id="description" className="block w-full" placeholder="Add a description for your image..." value={description} onChange={e => setDescription(e.target.value)} />
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
+        <CardFooter className="flex flex-col items-center gap-2">
           <Button onClick={handleSaveToGallery} disabled={!(imageUrl || localFile) || isUploading} className="w-full">
             {isUploading ? (
               'Saving...'

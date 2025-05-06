@@ -2,12 +2,19 @@ import { toast } from "@/components/ui/use-toast"
 
 export const BASE_URL = "http://127.0.0.1:8000"
 
-// Helper function to get the auth token
+// Helper function to get the auth token, supporting both 'user' and 'jwt' keys
 const getAuthToken = (): string | null => {
   if (typeof window !== "undefined") {
     const user = localStorage.getItem("user")
     if (user) {
-      return JSON.parse(user).token
+      try {
+        return JSON.parse(user).token
+      } catch {}
+    }
+    // Fallback for Google login storing token under 'jwt'
+    const jwt = localStorage.getItem("jwt")
+    if (jwt) {
+      return jwt
     }
   }
   return null

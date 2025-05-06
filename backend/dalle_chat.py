@@ -36,34 +36,34 @@ def prepare_image(path, size):
     buffer.seek(0)
     return buffer
 
-image_file = prepare_image(image_path, size)
-mask_file = prepare_image(mask_path, size)
+# image_file = prepare_image(image_path, size)
+# mask_file = prepare_image(mask_path, size)
 
-# === Отправка запроса ===
-response = requests.post(
-    "https://api.openai.com/v1/images/edits",
-    headers={
-        "Authorization": f"Bearer {api_key}",
-    },
-    files={
-        "image": ("image.png", image_file, "image/png"),
-        "mask": ("mask.png", mask_file, "image/png"),
-    },
-    data={
-        "prompt": prompt,
-        "model": "gpt-image-1",
-        "size": f"auto",
-    }
-)
+# # === Отправка запроса ===
+# response = requests.post(
+#     "https://api.openai.com/v1/images/edits",
+#     headers={
+#         "Authorization": f"Bearer {api_key}",
+#     },
+#     files={
+#         "image": ("image.png", image_file, "image/png"),
+#         "mask": ("mask.png", mask_file, "image/png"),
+#     },
+#     data={
+#         "prompt": prompt,
+#         "model": "gpt-image-1",
+#         "size": f"auto",
+#     }
+# )
 
-# === Обработка ответа ===
-if response.status_code == 200:
-    b64 = response.json()["data"][0]["b64_json"]
-    with open(output_path, "wb") as f:
-        f.write(base64.b64decode(b64))
-    print("Изображение сохранено в", output_path)
-else:
-    print("Ошибка:", response.status_code, response.text)
+# # === Обработка ответа ===
+# if response.status_code == 200:
+#     b64 = response.json()["data"][0]["b64_json"]
+#     with open(output_path, "wb") as f:
+#         f.write(base64.b64decode(b64))
+#     print("Изображение сохранено в", output_path)
+# else:
+#     print("Ошибка:", response.status_code, response.text)
 
 def edit_image(image_path: str, prompt: str) -> Image.Image:
     """

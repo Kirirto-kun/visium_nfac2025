@@ -153,20 +153,20 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="container py-8 max-w-2xl">
+    <div className="container py-8 max-w-2xl mx-auto">
       <Card>
-        <CardHeader>
+        <CardHeader className="text-center">
           <CardTitle>Generate & Edit AI Image</CardTitle>
           <CardDescription>Generate an image, refine with AI, then save</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 flex flex-col items-center">
           {!imageUrl ? (
             <>
-              <div>
+              <div className="w-full">
                 <Label htmlFor="prompt">Prompt</Label>
-                <Textarea id="prompt" value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Describe the image to generate..." />
+                <Textarea id="prompt" className="w-full" value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Describe the image to generate..." />
               </div>
-              <div>
+              <div className="w-full">
                 <Label htmlFor="style">Style</Label>
                 <Select value={style} onValueChange={setStyle}>
                   <SelectTrigger>
@@ -191,21 +191,21 @@ export default function GeneratePage() {
                 <Image src={imageUrl} alt="AI image" fill className="object-contain" />
                 <Button size="sm" variant="outline" className="absolute top-2 right-2" onClick={()=>{setImageUrl(null); setLocalFile(null); setBlobFile(null); setPrompt('')}}>Reset</Button>
               </div>
-              <div>
+              <div className="w-full">
                 <Label htmlFor="prompt">New Prompt</Label>
-                <Textarea id="prompt" value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Refine the image with AI..." />
+                <Textarea id="prompt" className="w-full" value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Refine the image with AI..." />
               </div>
               <Button onClick={handleEdit} disabled={!prompt||isEditing} className="w-full">
                 {isEditing?'Editing...':'Re-Edit Image'}
               </Button>
             </>
           )}
-          <div>
+          <div className="w-full">
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={description} onChange={e=>setDescription(e.target.value)} placeholder="Add a description..." />
+            <Textarea id="description" className="w-full" value={description} onChange={e=>setDescription(e.target.value)} placeholder="Add a description..." />
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
+        <CardFooter className="flex flex-col items-center gap-2">
           <Button onClick={handleSaveToGallery} disabled={!(imageUrl||localFile)||isSaving} className="w-full">
             {isSaving?'Saving...':'Save to Gallery'}
           </Button>
