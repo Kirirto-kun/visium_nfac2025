@@ -64,7 +64,7 @@ export default function UserGalleryPage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : images.length > 0 ? (
-        <div className="image-grid">
+        <div className="image-grid px-4">
           {images.map((image) => (
             <ImageCard key={image.id} image={image} onLikeChange={handleLikeChange} />
           ))}

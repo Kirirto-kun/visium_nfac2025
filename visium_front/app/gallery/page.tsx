@@ -68,16 +68,16 @@ export default function GalleryPage() {
 
   return (
     <div className="container py-8 animate-fade-in">
-      <h1 className="text-3xl font-bold mb-4">Explore Gallery</h1>
-      <nav className="flex space-x-4 mb-8">
-        <Link href="/gallery" className="text-primary font-medium hover:underline">
+      <h1 className="text-3xl font-bold mb-8 pl-4">Explore Gallery</h1>
+      <nav className="flex space-x-4 mb-8 pl-4">
+      <Link href="/gallery" className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-primary font-medium hover:bg-primary/10 dark:hover:bg-primary/30 transition">
           All
         </Link>
-        <Link href="/gallery/ai" className="text-primary font-medium hover:underline">
-          AI Only
+        <Link href="/gallery/ai" className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-primary font-medium hover:bg-primary/10 dark:hover:bg-primary/30 transition">
+          AI generated gallery
         </Link>
-        <Link href="/gallery/non-ai" className="text-primary font-medium hover:underline">
-          Photos Only
+        <Link href="/gallery/non-ai" className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-primary font-medium hover:bg-primary/10 dark:hover:bg-primary/30 transition">
+          Non AI generated gallery
         </Link>
       </nav>
 
@@ -86,7 +86,7 @@ export default function GalleryPage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : filteredImages.length > 0 ? (
-        <div className="image-grid">
+        <div className="image-grid px-4">
           {filteredImages.map((image) => (
             <ImageCard key={image.id} image={image} onLikeChange={handleLikeChange} />
           ))}

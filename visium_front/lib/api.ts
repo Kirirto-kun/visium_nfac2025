@@ -48,10 +48,15 @@ async function apiRequest<T>(endpoint: string, method = "GET", data?: any, requi
 
     return await response.json()
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    if (msg.includes('You have not liked this post')) {
+      // Expected error for unliking a post that wasn't liked; rethrow without logging
+      throw error
+    }
     console.error("API request error:", error)
     toast({
       title: "Error",
-      description: error instanceof Error ? error.message : "An unknown error occurred",
+      description: msg,
       variant: "destructive",
     })
     throw error

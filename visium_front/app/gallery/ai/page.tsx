@@ -69,20 +69,28 @@ export default function AiGalleryPage() {
   }
 
   return (
+    
     <div className="container py-8 animate-fade-in">
-      <nav className="flex space-x-4 mb-8">
-        <Link href="/gallery" className="text-primary font-medium hover:underline">All</Link>
-        <Link href="/gallery/ai" className="text-primary font-medium hover:underline">AI Only</Link>
-        <Link href="/gallery/non-ai" className="text-primary font-medium hover:underline">Photos Only</Link>
+      <h1 className="text-3xl font-bold mb-8 pl-4">AI Generated Gallery</h1>
+      <nav className="flex space-x-4 mb-8 pl-4">
+      <Link href="/gallery" className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-primary font-medium hover:bg-primary/10 dark:hover:bg-primary/30 transition">
+          All
+        </Link>
+        <Link href="/gallery/ai" className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-primary font-medium hover:bg-primary/10 dark:hover:bg-primary/30 transition">
+          AI generated gallery
+        </Link>
+        <Link href="/gallery/non-ai" className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-primary font-medium hover:bg-primary/10 dark:hover:bg-primary/30 transition">
+          Non AI generated gallery
+        </Link>
       </nav>
-      <h1 className="text-3xl font-bold mb-8">AI Generated Gallery</h1>
+      
 
       {isLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : filteredImages.length > 0 ? (
-        <div className="image-grid">
+        <div className="image-grid px-4">
           {filteredImages.map(image => (
             <ImageCard key={image.id} image={image} onLikeChange={handleLikeChange} />
           ))}

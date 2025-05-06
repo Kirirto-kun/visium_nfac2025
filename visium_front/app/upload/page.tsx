@@ -19,7 +19,7 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadedResponse, setUploadedResponse] = useState<any>(null)
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   // new states for AI editing
@@ -27,18 +27,19 @@ export default function UploadPage() {
   const [prompt, setPrompt] = useState("")
   const [isEditing, setIsEditing] = useState(false)
   const [blobFile, setBlobFile] = useState<File | null>(null)
+  // Add preview URL state
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  // Use useEffect for navigation to avoid state updates during render
+  // Redirect to login when auth state resolves
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/auth/login")
     }
-  }, [user, router])
+  }, [authLoading, user, router])
 
-  // If user is not authenticated, render nothing while redirecting
-  if (!user) {
-    return null
-  }
+  // Wait until auth status is determined
+  if (authLoading) return null
+  if (!user) return null
 
   // Handle AI edit
   const handleEdit = async () => {
@@ -70,26 +71,24 @@ export default function UploadPage() {
 
   // Modify save: upload blobFile if available
   const handleSaveToGallery = async () => {
-    // Determine source: edited image URL or original local file
-    let urlToSend: string | null = null
-    let isAiImage = false
-    if (blobFile && imageUrl) {
-      urlToSend = imageUrl
-      isAiImage = true
-    } else if (localFile) {
-      // upload original local file via UploadThing
-      const up = new FormData()
-      up.append('file', localFile)
-      const token = getAuthToken()
-      const upl = await fetch('/api/uploadthing/server-upload', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: up })
-      if (!upl.ok) throw new Error('UploadThing upload failed')
-      const { urls } = await upl.json() as { urls?: string[] }
-      if (!urls?.length) throw new Error('No URL returned from upload')
-      urlToSend = urls[0]
-    }
-    if (!urlToSend) return
+    // Consolidate: upload either edited blobFile or original localFile via UploadThing
+    const fileToUpload = blobFile || localFile
+    if (!fileToUpload) return
+    const isAiImage = Boolean(blobFile)
     setIsUploading(true)
     try {
+      const form = new FormData()
+      form.append('file', fileToUpload)
+      const token = getAuthToken()
+      const uploadResponse = await fetch('/api/uploadthing/server-upload', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      })
+      if (!uploadResponse.ok) throw new Error('UploadThing upload failed')
+      const { urls } = await uploadResponse.json() as { urls?: string[] }
+      if (!urls?.length) throw new Error('No URL returned from upload')
+      const urlToSend = urls[0]
       // Post to backend: flag AI images only when editing was done
       await uploadImage(urlToSend, description, isAiImage)
       toast({ title: 'Image saved', description: 'Your image has been added to your gallery' })

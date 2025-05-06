@@ -73,7 +73,18 @@ export function ImageCard({ image, onLikeChange, showComments = false }: ImageCa
         onLikeChange(image.id, !liked)
       }
     } catch (error) {
-      console.error("Error toggling like:", error)
+      const msg = error instanceof Error ? error.message : String(error)
+      if (msg.includes('You have not liked this post')) {
+        // Sync state when unlike fails because it wasn't liked
+        setLiked(false)
+        setLikesCount(prev => Math.max(prev - 1, 0))
+        if (onLikeChange) onLikeChange(image.id, false)
+        toast({ title: 'Info', description: msg })
+        return
+      } else {
+        console.error("Error toggling like:", error)
+        toast({ title: 'Error', description: 'Failed to update like', variant: 'destructive' })
+      }
     }
   }
 

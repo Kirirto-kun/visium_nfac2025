@@ -27,22 +27,38 @@ export default function ImageDetailPage() {
   const [currentUrl, setCurrentUrl] = useState('')
 
   const handleDownload = useCallback(async () => {
-    if (!image?.image_url) return
+    if (!image?.image_url) return;
     try {
-      const response = await fetch(image.image_url)
-      const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = `${image.id}-${image.description || 'image'}`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(blobUrl)
+      const response = await fetch(image.image_url);
+      const blob = await response.blob();
+      const img = new window.Image();
+      const blobUrlTemp = URL.createObjectURL(blob);
+      img.src = blobUrlTemp;
+      await new Promise(resolve => { img.onload = resolve; });
+      URL.revokeObjectURL(blobUrlTemp);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+      }
+      const pngBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!pngBlob) {
+        throw new Error('Canvas toBlob failed');
+      }
+      const pngUrl = URL.createObjectURL(pngBlob);
+      const a = document.createElement('a');
+      a.href = pngUrl;
+      a.download = `${image.id}-${image.description || 'image'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(pngUrl);
     } catch (err) {
-      console.error('Download failed', err)
+      console.error('Download failed', err);
     }
-  }, [image])
+  }, [image]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
